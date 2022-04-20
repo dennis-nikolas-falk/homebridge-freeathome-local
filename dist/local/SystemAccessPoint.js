@@ -41,6 +41,10 @@ class SystemAccessPoint {
         if (logger !== undefined && logger !== null) {
             this.logger = logger;
         }
+        let cfg = this.subscriber.getConfig();
+        if ('debug' in cfg && cfg['debug']) {
+            this.logger.debugEnabled = true;
+        }
         this.axios = axios_1.default.create({
             httpsAgent: new https.Agent({
                 rejectUnauthorized: false
@@ -155,6 +159,7 @@ class SystemAccessPoint {
             let deviceData = this.getDeviceConfiguration();
         }));
         this.client.on('ping', ping => {
+            this.resetHeartBeatTimer();
             this.logger.debug('WS Ping:', ping);
         });
         this.client.on('status', status => {

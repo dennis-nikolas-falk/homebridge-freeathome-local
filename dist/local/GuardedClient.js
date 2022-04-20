@@ -38,6 +38,7 @@ class GuardedClient {
         });
     }
     restartSocket() {
+        this.client.terminate();
         this.client = this.createWebsocket();
     }
     getBWAToken() {

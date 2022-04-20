@@ -17,7 +17,7 @@ export class GuardedClient {
         this._bwaToken = Buffer.from(options['username'] + ':' + options['password']).toString('base64')
         this._wsURL = options['service']
         this.client = this.createWebsocket()
-        
+
         this.errorSubscriber = errorSubscriber
         if (logger !== undefined && logger !== null) {
             this.logger = logger
@@ -38,7 +38,11 @@ export class GuardedClient {
         })
     }
 
+    /**
+     * terminates socket and creates a new one
+     */
     public restartSocket() {
+        this.client.terminate()
         this.client = this.createWebsocket()
     }
 

@@ -1,11 +1,9 @@
 import axios, { Axios } from "axios"
 import compareVersions from "compare-versions"
-import FatHAPI from "freeathome-api"
 import { SystemAccessPointSettings, SystemAccessPointUser } from "freeathome-api/dist/lib/SystemAccessPointSettings"
 import { ClientConfiguration } from "freeathome-api/dist/lib/Configuration"
 import { Subscriber } from "./Subscriber"
 import { Logger, ConsoleLogger } from "freeathome-api/dist/lib/Logger"
-import { General, Message, Result } from "freeathome-api/dist/lib/constants"
 import { GuardedClient } from './GuardedClient'
 import { MessageBuilder } from './MessageBuilder'
 
@@ -61,6 +59,10 @@ export class SystemAccessPoint {
         //this.useTLS = subscriber.config.useTLS
         if (logger !== undefined && logger !== null) {
             this.logger = logger
+        }
+        let cfg : [] = this.subscriber.getConfig() 
+        if ('debug' in cfg && cfg['debug']) {
+            this.logger.debugEnabled = true;
         }
         // ignore self signed certs at instance level
         this.axios = axios.create({
@@ -213,7 +215,7 @@ export class SystemAccessPoint {
         })
 
         this.client.on('ping', ping => {
-            //this.heartBeat()
+            this.resetHeartBeatTimer()
             this.logger.debug('WS Ping:', ping)
             //this.client.pong()
         })
@@ -414,7 +416,7 @@ export class SystemAccessPoint {
         return this.deviceData
     }
 
- /**
+    /**
      * heartbeat to detect if WS still send messages od my be death
      */
   private async startHeartBeat() {
@@ -442,7 +444,6 @@ private async heartBeat() {
         this.client!.restartSocket()
         this.resetHeartBeatTimer()
         this.registerHandlers()
-        //this.startHeartBeat()
     }
     this.heartBeatTimerMillis += this.heartBeatRateMillis
 }

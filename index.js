@@ -31,7 +31,7 @@ function BuschJaegerApPlatform(log, config, api) {
     this.hap = Hap;
     this.hApi = api;
     this.platformAccessory = PlatformAccessory;
-
+    
     this.log('Initialising BuschJaeger Plugin');
 
     this.mappings = config.mappings;
@@ -59,7 +59,6 @@ function BuschJaegerApPlatform(log, config, api) {
 
     this.foundAccessories = [];
 
-    
 }
 
 BuschJaegerApPlatform.prototype.accessories = function (callback) {

@@ -1,6 +1,12 @@
+### 3.0.4-beta.2
+
+* Destroy existing Socket before Reconnect 
+* Debug Logger repaired
+
 ### 3.0.4-beta.1
 
 * Reconnect Websocket if connection is lost or no broadcast messages will be retrieved in any 30s interval
+* Update npm modules to current versions
 
 ### 3.0.4-beta.0
 
