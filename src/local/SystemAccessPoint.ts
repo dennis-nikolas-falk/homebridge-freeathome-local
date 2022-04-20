@@ -24,9 +24,12 @@ export class SystemAccessPoint {
     private connectedAs: string | undefined
     private user: SystemAccessPointUser | undefined
     private keepAliveMessageId: number = 1
-    private pingTimeoutSeconds: number = 10000
-    private keepAliveTimer: NodeJS.Timeout | null = null
+    private heartBeatRateMillis: number = 2000
+    private keepAliveTimer: NodeJS.Timeout | null = null 
+    private heartBeatReconnectLimit: number = 30000 // 30s
+    private heartBeatTimerMillis: number = 0
     private pingTimeout: NodeJS.Timeout | null = null
+
     private deviceData: any = {}
     private subscribed: boolean = false
     private axios: Axios
@@ -103,6 +106,7 @@ export class SystemAccessPoint {
 
         this.messageBuilder = new MessageBuilder(username)
         this.registerHandlers()
+        this.startHeartBeat()
     }
 
     private async getSettings(): Promise<SystemAccessPointSettings> {
@@ -164,7 +168,7 @@ export class SystemAccessPoint {
      *     onclose: (event: WebSocket.CloseEvent) => void;
      *     onmessage: (event: WebSocket.MessageEvent) => void;
      */
-    private registerHandlers() {
+    public registerHandlers() {
         if (this.client === undefined) {
             throw new Error("Unknown error occurred! this.client undefined.")
         }
@@ -191,7 +195,8 @@ export class SystemAccessPoint {
         this.client.guardedOn('message', async stanza => {
             this.logger.debug('Received stanza:', JSON.parse(stanza))
             let astanza = JSON.parse(stanza)[this._uuid] ?? null
-            this.heartBeat()
+            //this.heartBeat()
+            this.resetHeartBeatTimer()
             if (astanza.datapoints) {
                 this.handleEvent(astanza)
             }
@@ -208,8 +213,9 @@ export class SystemAccessPoint {
         })
 
         this.client.on('ping', ping => {
-            this.heartBeat()
+            //this.heartBeat()
             this.logger.debug('WS Ping:', ping)
+            //this.client.pong()
         })
 
         // Debug
@@ -225,33 +231,17 @@ export class SystemAccessPoint {
 
     }
 
-    /**
-     * heartbeat to detect if WS still send messages od my be death
-     */
-    private async heartBeat() {
-        if(this.pingTimeout){
-            clearTimeout(this.pingTimeout);
-        }
-        let self = this;
-        this.logger.debug("*** heartBeat " + this.pingTimeoutSeconds);
-        // Use `WebSocket#terminate()`, which immediately destroys the connection,
-        // instead of `WebSocket#close()`, which waits for the close timer.
-        // Delay should be equal to the interval at which your server
-        // sends out pings plus a conservative assumption of the latency.
-        this.pingTimeout = setTimeout(() => {
-            //self.disconnect()
-        }, this.pingTimeoutSeconds);
-    }
-
+    
 
 
     private handleEvent(stanza: any) {
-        this.logger.debug("handleEvent: ");
-        this.logger.debug(JSON.stringify(stanza));
+        this.logger.debug("handleEvent:");
+        //this.logger.debug(JSON.stringify(stanza));
         for (const [key, value] of Object.entries(stanza.datapoints)) {
             if (key) {
                 let telegram = key + '/' + value
                 //this.logger.log('* ' + telegram)
+                this.logger.debug('*** ' + telegram)
                 this.applyIncrementalUpdate(telegram.split('/'));
             }
         }
@@ -318,7 +308,7 @@ export class SystemAccessPoint {
         try {
             await this.client!.start()
             //this.sendKeepAliveMessages()
-            this.heartBeat()
+            this.startHeartBeat()
         } catch (e: any) {
             this.logger.error('Could not connect to System Access Point', e.toString())
             throw Error("Could not connect to System Access Point")
@@ -423,4 +413,48 @@ export class SystemAccessPoint {
 
         return this.deviceData
     }
+
+ /**
+     * heartbeat to detect if WS still send messages od my be death
+     */
+  private async startHeartBeat() {
+    if(this.pingTimeout){
+        clearTimeout(this.pingTimeout);
+    }
+    let self = this;
+    this.logger.debug("*** heartBeat " + this.heartBeatRateMillis);
+    // Use `WebSocket#terminate()`, which immediately destroys the connection,
+    // instead of `WebSocket#close()`, which waits for the close timer.
+    // Delay should be equal to the interval at which your server
+    // sends out pings plus a conservative assumption of the latency.
+    this.pingTimeout = setInterval(() => {
+        self.heartBeat()
+    }, this.heartBeatRateMillis);
+}
+
+/**
+ * heartbeat every pingTimeoutSeconds/1000 seconds called, reconnects WS if inactive
+ */
+private async heartBeat() {
+    this.logger.debug("heartBeat  " + this.heartBeatTimerMillis + "ms ... ")
+    if(this.heartBeatTimerMillis > this.heartBeatReconnectLimit) {
+        this.logger.debug("*** heartBeat recreating WS *** ")
+        this.client!.restartSocket()
+        this.resetHeartBeatTimer()
+        this.registerHandlers()
+        //this.startHeartBeat()
+    }
+    this.heartBeatTimerMillis += this.heartBeatRateMillis
+}
+
+
+/**
+ * ReSets Heartbeat Timer after message received from server
+ */
+private resetHeartBeatTimer() {
+    this.logger.debug("resetHeartBeatTimer")
+    this.heartBeatTimerMillis = 0
+}
+
+
 }

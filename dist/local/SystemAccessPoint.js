@@ -24,8 +24,10 @@ class SystemAccessPoint {
         this.online = false;
         this.useTLS = false;
         this.keepAliveMessageId = 1;
-        this.pingTimeoutSeconds = 10000;
+        this.heartBeatRateMillis = 2000;
         this.keepAliveTimer = null;
+        this.heartBeatReconnectLimit = 30000;
+        this.heartBeatTimerMillis = 0;
         this.pingTimeout = null;
         this.deviceData = {};
         this.subscribed = false;
@@ -70,6 +72,7 @@ class SystemAccessPoint {
             }, this.logger);
             this.messageBuilder = new MessageBuilder_1.MessageBuilder(username);
             this.registerHandlers();
+            this.startHeartBeat();
         });
     }
     getSettings() {
@@ -139,7 +142,7 @@ class SystemAccessPoint {
             var _a;
             this.logger.debug('Received stanza:', JSON.parse(stanza));
             let astanza = (_a = JSON.parse(stanza)[this._uuid]) !== null && _a !== void 0 ? _a : null;
-            this.heartBeat();
+            this.resetHeartBeatTimer();
             if (astanza.datapoints) {
                 this.handleEvent(astanza);
             }
@@ -152,7 +155,6 @@ class SystemAccessPoint {
             let deviceData = this.getDeviceConfiguration();
         }));
         this.client.on('ping', ping => {
-            this.heartBeat();
             this.logger.debug('WS Ping:', ping);
         });
         this.client.on('status', status => {
@@ -165,23 +167,12 @@ class SystemAccessPoint {
             this.logger.debug('Received new output data:', output);
         });
     }
-    heartBeat() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this.pingTimeout) {
-                clearTimeout(this.pingTimeout);
-            }
-            let self = this;
-            this.logger.debug("*** heartBeat " + this.pingTimeoutSeconds);
-            this.pingTimeout = setTimeout(() => {
-            }, this.pingTimeoutSeconds);
-        });
-    }
     handleEvent(stanza) {
-        this.logger.debug("handleEvent: ");
-        this.logger.debug(JSON.stringify(stanza));
+        this.logger.debug("handleEvent:");
         for (const [key, value] of Object.entries(stanza.datapoints)) {
             if (key) {
                 let telegram = key + '/' + value;
+                this.logger.debug('*** ' + telegram);
                 this.applyIncrementalUpdate(telegram.split('/'));
             }
         }
@@ -232,7 +223,7 @@ class SystemAccessPoint {
             }
             try {
                 yield this.client.start();
-                this.heartBeat();
+                this.startHeartBeat();
             }
             catch (e) {
                 this.logger.error('Could not connect to System Access Point', e.toString());
@@ -322,6 +313,34 @@ class SystemAccessPoint {
             throw new Error("Device Data was requested before we have initialized it");
         }
         return this.deviceData;
+    }
+    startHeartBeat() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.pingTimeout) {
+                clearTimeout(this.pingTimeout);
+            }
+            let self = this;
+            this.logger.debug("*** heartBeat " + this.heartBeatRateMillis);
+            this.pingTimeout = setInterval(() => {
+                self.heartBeat();
+            }, this.heartBeatRateMillis);
+        });
+    }
+    heartBeat() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.logger.debug("heartBeat  " + this.heartBeatTimerMillis + "ms ... ");
+            if (this.heartBeatTimerMillis > this.heartBeatReconnectLimit) {
+                this.logger.debug("*** heartBeat recreating WS *** ");
+                this.client.restartSocket();
+                this.resetHeartBeatTimer();
+                this.registerHandlers();
+            }
+            this.heartBeatTimerMillis += this.heartBeatRateMillis;
+        });
+    }
+    resetHeartBeatTimer() {
+        this.logger.debug("resetHeartBeatTimer");
+        this.heartBeatTimerMillis = 0;
     }
 }
 exports.SystemAccessPoint = SystemAccessPoint;

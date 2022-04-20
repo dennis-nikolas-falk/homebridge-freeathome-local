@@ -1,3 +1,7 @@
+### 3.0.4-beta.1
+
+* Reconnect Websocket if connection is lost or no broadcast messages will be retrieved in any 30s interval
+
 ### 3.0.4-beta.0
 
 * Config setting for TLS or Plain communication (UseTLS)

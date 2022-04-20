@@ -13,8 +13,10 @@ export declare class SystemAccessPoint {
     private connectedAs;
     private user;
     private keepAliveMessageId;
-    private pingTimeoutSeconds;
+    private heartBeatRateMillis;
     private keepAliveTimer;
+    private heartBeatReconnectLimit;
+    private heartBeatTimerMillis;
     private pingTimeout;
     private deviceData;
     private subscribed;
@@ -28,8 +30,7 @@ export declare class SystemAccessPoint {
     private createClient;
     private getSettings;
     private getDeviceConfiguration;
-    private registerHandlers;
-    private heartBeat;
+    registerHandlers(): void;
     private handleEvent;
     private unwrapEventData;
     private getProtocolHTTP;
@@ -43,4 +44,7 @@ export declare class SystemAccessPoint {
     private applyIncrementalUpdate;
     setDatapoint(serialNo: string, channel: string, datapoint: string, value: string): Promise<void>;
     getDeviceData(): any;
+    private startHeartBeat;
+    private heartBeat;
+    private resetHeartBeatTimer;
 }

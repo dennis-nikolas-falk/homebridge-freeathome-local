@@ -19,23 +19,32 @@ class GuardedClient {
     constructor(errorSubscriber, options, logger) {
         this.logger = new Logger_1.ConsoleLogger();
         this._bwaToken = "";
+        this._wsURL = "";
         this._bwaToken = Buffer.from(options['username'] + ':' + options['password']).toString('base64');
-        this.client = new ws_1.default(options['service'], {
-            protocolVersion: 13,
-            rejectUnauthorized: false,
-            headers: {
-                "Authorization": "Basic " + this._bwaToken
-            }
-        });
+        this._wsURL = options['service'];
+        this.client = this.createWebsocket();
         this.errorSubscriber = errorSubscriber;
         if (logger !== undefined && logger !== null) {
             this.logger = logger;
         }
     }
+    createWebsocket() {
+        return new ws_1.default(this._wsURL, {
+            protocolVersion: 13,
+            rejectUnauthorized: false,
+            headers: {
+                "Authorization": "Basic " + this.getBWAToken()
+            }
+        });
+    }
+    restartSocket() {
+        this.client = this.createWebsocket();
+    }
     getBWAToken() {
         return this._bwaToken;
     }
     on(event, fn) {
+        this.logger.debug("GuardedClient ON :" + event);
         this.client.on(event, fn);
     }
     guardedOn(event, fn) {
@@ -52,14 +61,10 @@ class GuardedClient {
         this.client.on(event, guardedFn);
     }
     send(stanza) {
+        this.logger.debug("*** WS send ");
         return new Promise((resolve, reject) => {
-            if (true) {
-                this.client.send(stanza);
-                resolve();
-            }
-            else {
-                resolve();
-            }
+            this.client.send(stanza);
+            resolve();
         });
     }
     ping() {
@@ -68,7 +73,14 @@ class GuardedClient {
             resolve();
         });
     }
+    pong() {
+        return new Promise((resolve, reject) => {
+            this.logger.debug("*** WS PONG ***");
+            resolve();
+        });
+    }
     start() {
+        this.logger.debug("*** WS start ");
         return new Promise((resolve, reject) => {
             if (this.client.readyState === ws_1.default.OPEN) {
                 resolve();

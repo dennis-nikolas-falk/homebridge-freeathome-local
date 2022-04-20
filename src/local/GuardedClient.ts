@@ -7,25 +7,40 @@ export class GuardedClient {
     private logger: Logger = new ConsoleLogger();
     private errorSubscriber: Subscriber;
     private client: WebSocket;
-    private _bwaToken: String = "";
+    private _bwaToken: string = "";
+    private _wsURL: string = "";
+
+  
 
     constructor(errorSubscriber: Subscriber, options?: any, logger?: Logger) {
        
         this._bwaToken = Buffer.from(options['username'] + ':' + options['password']).toString('base64')
-        this.client = new WebSocket(options['service'], {
-            protocolVersion: 13,
-            //origin: options['from'],
-            rejectUnauthorized: false,
-            headers: {
-                "Authorization": "Basic " + this._bwaToken
-            }
-        })
+        this._wsURL = options['service']
+        this.client = this.createWebsocket()
+        
         this.errorSubscriber = errorSubscriber
         if (logger !== undefined && logger !== null) {
             this.logger = logger
         }
     }
 
+    /**
+     * creates the websocket object
+     * @returns Websocket
+     */
+    protected createWebsocket(): WebSocket {
+        return new WebSocket(this._wsURL, {
+            protocolVersion: 13,
+            rejectUnauthorized: false,
+            headers: {
+                "Authorization": "Basic " + this.getBWAToken()
+            }
+        })
+    }
+
+    public restartSocket() {
+        this.client = this.createWebsocket()
+    }
 
     /**
      * 
@@ -36,8 +51,11 @@ export class GuardedClient {
     }
 
     on(event: string, fn: (a: any) => any): void {
+        this.logger.debug("GuardedClient ON :" + event)
         this.client.on(event, fn)
     }
+
+   
 
     /**
      * Extend on-event method to guard execution and expose errors through broadcast messages.
@@ -49,7 +67,7 @@ export class GuardedClient {
             try {
                 
                 this.logger.debug("this.client.readyState:" + this.client.readyState)
-                //this.logger.debug(this.client)
+                
                 await fn(a)
             } catch (err: any) {
                 this.logger.error(`Unexpected error while processing ${event} event`, err)
@@ -64,14 +82,10 @@ export class GuardedClient {
 
     send(stanza: any): Promise<any> {
         //return new Promise (executor: this.client.send(stanza))
-
+        this.logger.debug("*** WS send ")
         return new Promise<void>((resolve, reject) => {
-            if (true) {
-                this.client.send(stanza)
-                resolve()
-            } else {
-                resolve()
-            }
+            this.client.send(stanza)
+            resolve()
         })
     }
 
@@ -83,8 +97,16 @@ export class GuardedClient {
         })
     }
 
-    start(): Promise<any> {
+    pong(): Promise<any> {
+    
+        return new Promise<void>((resolve, reject) => {
+            this.logger.debug("*** WS PONG ***")
+            resolve()
+        })
+    }
 
+    start(): Promise<any> {
+        this.logger.debug("*** WS start ")
         return new Promise<void>((resolve, reject) => {
             if (this.client.readyState === WebSocket.OPEN) {
                 resolve()
