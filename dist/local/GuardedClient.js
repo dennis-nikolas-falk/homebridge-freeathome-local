@@ -38,14 +38,14 @@ class GuardedClient {
         });
     }
     restartSocket() {
-        this.client.terminate();
+        this.terminate();
         this.client = this.createWebsocket();
     }
     getBWAToken() {
         return this._bwaToken;
     }
     on(event, fn) {
-        this.logger.debug("GuardedClient ON :" + event);
+        this.logger.debug("GuardedClient ON: " + event);
         this.client.on(event, fn);
     }
     guardedOn(event, fn) {
@@ -62,7 +62,7 @@ class GuardedClient {
         this.client.on(event, guardedFn);
     }
     send(stanza) {
-        this.logger.debug("*** WS send ");
+        this.logger.debug("*** WS send() ***");
         return new Promise((resolve, reject) => {
             this.client.send(stanza);
             resolve();
@@ -81,7 +81,7 @@ class GuardedClient {
         });
     }
     start() {
-        this.logger.debug("*** WS start ");
+        this.logger.debug("*** WS start ***");
         return new Promise((resolve, reject) => {
             if (this.client.readyState === ws_1.default.OPEN) {
                 resolve();

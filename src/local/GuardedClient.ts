@@ -39,10 +39,14 @@ export class GuardedClient {
     }
 
     /**
-     * terminates socket and creates a new one
+     * terminates socket connection immediately and creates a new one
      */
     public restartSocket() {
-        this.client.terminate()
+         // Use `WebSocket#terminate()`, which immediately destroys the connection,
+        // instead of `WebSocket#close()`, which waits for the close timer.
+        // Delay should be equal to the interval at which your server
+        // sends out pings plus a conservative assumption of the latency.
+        this.terminate()
         this.client = this.createWebsocket()
     }
 
@@ -55,7 +59,7 @@ export class GuardedClient {
     }
 
     on(event: string, fn: (a: any) => any): void {
-        this.logger.debug("GuardedClient ON :" + event)
+        this.logger.debug("GuardedClient ON: " + event)
         this.client.on(event, fn)
     }
 
@@ -83,10 +87,9 @@ export class GuardedClient {
     }
 
     
-
     send(stanza: any): Promise<any> {
         //return new Promise (executor: this.client.send(stanza))
-        this.logger.debug("*** WS send ")
+        this.logger.debug("*** WS send() ***")
         return new Promise<void>((resolve, reject) => {
             this.client.send(stanza)
             resolve()
@@ -110,7 +113,7 @@ export class GuardedClient {
     }
 
     start(): Promise<any> {
-        this.logger.debug("*** WS start ")
+        this.logger.debug("*** WS start ***")
         return new Promise<void>((resolve, reject) => {
             if (this.client.readyState === WebSocket.OPEN) {
                 resolve()

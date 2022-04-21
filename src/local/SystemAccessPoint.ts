@@ -14,25 +14,18 @@ export class SystemAccessPoint {
     private readonly subscriber: Subscriber
     private client: GuardedClient | undefined
     private messageBuilder: MessageBuilder | undefined
-    private crypto: Crypto | undefined
     private online: boolean = false
-    private useTLS: boolean = false
-
     private settings: SystemAccessPointSettings | undefined
-    private connectedAs: string | undefined
-    private user: SystemAccessPointUser | undefined
-    private keepAliveMessageId: number = 1
-    private heartBeatRateMillis: number = 2000
-    private keepAliveTimer: NodeJS.Timeout | null = null 
+    private heartBeatRateMillis: number = 1000
+    private keepAliveTimer: NodeJS.Timeout | null = null
     private heartBeatReconnectLimit: number = 30000 // 30s
     private heartBeatTimerMillis: number = 0
     private pingTimeout: NodeJS.Timeout | null = null
 
     private deviceData: any = {}
-    private subscribed: boolean = false
     private axios: Axios
     private logger: Logger = new ConsoleLogger()
-    
+
     /**
      * ports will be set automagically (hopefully)
      */
@@ -60,10 +53,14 @@ export class SystemAccessPoint {
         if (logger !== undefined && logger !== null) {
             this.logger = logger
         }
-        let cfg : [] = this.subscriber.getConfig() 
+        let cfg: [] = this.subscriber.getConfig()
         if ('debug' in cfg && cfg['debug']) {
             this.logger.debugEnabled = true;
         }
+        if ('reconnectLimit' in cfg && cfg['reconnectLimit'] && cfg['reconnectLimit']>5) {
+            this.heartBeatReconnectLimit = cfg['reconnectLimit']*1000;
+        }
+         
         // ignore self signed certs at instance level
         this.axios = axios.create({
             httpsAgent: new https.Agent({
@@ -72,6 +69,9 @@ export class SystemAccessPoint {
         });
     }
 
+    /**
+     * Create the Guarded Client and inititialize event handlers the HeartBeat timer
+     */
     private async createClient() {
         this.settings = await this.getSettings()
 
@@ -99,7 +99,7 @@ export class SystemAccessPoint {
          * private readonly _path2api = '/fhapi/v1/api'
          */
         this.client = new GuardedClient(this.subscriber, {
-            service: this.getProtocolWS() + this.configuration.hostname +  ((this._port!='')?':' + this._port:'') + this._path2api + '/ws',
+            service: this.getProtocolWS() + this.configuration.hostname + ((this._port != '') ? ':' + this._port : '') + this._path2api + '/ws',
             from: this.configuration.hostname,
             resource: 'freeathome-api',
             username: username,
@@ -157,14 +157,13 @@ export class SystemAccessPoint {
         }
         catch (e: any) {
             this.logger.error("Unexpected status code from System Access Point while retrieving " + _restpath + "\n" + e.toString());
-                
             return null
         }
 
     }
 
     /**
-     *      
+     *     Register websocket event Handlers  
      *     onopen: (event: WebSocket.OpenEvent) => void;
      *     onerror: (event: WebSocket.ErrorEvent) => void;
      *     onclose: (event: WebSocket.CloseEvent) => void;
@@ -185,19 +184,17 @@ export class SystemAccessPoint {
 
         this.client.on('close', () => {
             this.logger.log('Access Point has gone offline')
-            this.online = false
-            this.subscribed = false
+            //this.online = false
+            //this.subscribed = false
             this.subscriber.broadcastMessage({
                 'type': 'subscribed',
                 'result': false
             })
-            this.disableKeepAliveMessages()
         })
 
         this.client.guardedOn('message', async stanza => {
             this.logger.debug('Received stanza:', JSON.parse(stanza))
             let astanza = JSON.parse(stanza)[this._uuid] ?? null
-            //this.heartBeat()
             this.resetHeartBeatTimer()
             if (astanza.datapoints) {
                 this.handleEvent(astanza)
@@ -205,19 +202,22 @@ export class SystemAccessPoint {
         })
 
         this.client.on('open', async address => {
-            let connectedAs = 'Local API Websocket'
-            this.logger.log("Connected as " + connectedAs)
-            this.connectedAs = connectedAs
+            //let connectedAs = 'Local API Websocket'
+            //this.logger.log("Connected as " + connectedAs)
+            //this.connectedAs = connectedAs
 
             this.logger.log("Retrieving configuration...")
             let deviceData = this.getDeviceConfiguration()
-
+            this.resetHeartBeatTimer()
         })
 
+        /**
+         * SysAP socket send ping in intervals, pong will be replied automagic by "ws" 
+         */
         this.client.on('ping', ping => {
             this.resetHeartBeatTimer()
             this.logger.debug('WS Ping:', ping)
-            //this.client.pong()
+            //this.client.pong() // pong is done by 'ws'
         })
 
         // Debug
@@ -233,26 +233,21 @@ export class SystemAccessPoint {
 
     }
 
-    
-
-
+    /**
+     * 
+     * @param stanza Handler called on "message"
+     */
     private handleEvent(stanza: any) {
         this.logger.debug("handleEvent:");
         //this.logger.debug(JSON.stringify(stanza));
         for (const [key, value] of Object.entries(stanza.datapoints)) {
             if (key) {
                 let telegram = key + '/' + value
-                //this.logger.log('* ' + telegram)
                 this.logger.debug('*** ' + telegram)
                 this.applyIncrementalUpdate(telegram.split('/'));
             }
         }
 
-    }
-
-    private unwrapEventData(item: Element): string {
-
-        return "";
     }
 
     private getProtocolHTTP() {
@@ -275,6 +270,12 @@ export class SystemAccessPoint {
         }
     }
 
+    /**
+     * Sending messages are don by HTTPS REST requests (axios instead ws!)5
+     *  
+     * @param message The channel to be set
+     * @param value A value, mostly int or float as string
+     */
     private async sendMessage(message: any, value: string) {
         // await this.client!.send(message)
         let bwaToken = this.client!.getBWAToken()
@@ -320,14 +321,6 @@ export class SystemAccessPoint {
     async disconnect() {
         this.logger.log("Disconnecting from the System Access Point...");
         await this.client!.stop()
-    }
-
-    private async sendKeepAliveMessage() {
-        //await this.sendMessage(this.keepAliveMessageId++)
-    }
-
-    private sendKeepAliveMessages() {
-        this.keepAliveTimer = setInterval(() => this.sendKeepAliveMessage(), 15000)
     }
 
     private disableKeepAliveMessages() {
@@ -376,10 +369,10 @@ export class SystemAccessPoint {
                         let channelKey = ''
                         if (this.deviceData[serialNo]['channels'][channelNo]['outputs'][datapointNo] != null) {
                             channelKey = 'outputs'
-                        }else 
-                        if (this.deviceData[serialNo]['channels'][channelNo]['inputs'][datapointNo] != null) {
-                            channelKey = 'inputs'
-                        }
+                        } else
+                            if (this.deviceData[serialNo]['channels'][channelNo]['inputs'][datapointNo] != null) {
+                                channelKey = 'inputs'
+                            }
                         // local API inputs & outputs - datapointNo csn oeitherr be in inputs or outputs
                         upd[serialNo]['channels'] = []
                         upd[serialNo]['channels'][channelNo] = []
@@ -387,8 +380,8 @@ export class SystemAccessPoint {
                         upd[serialNo]['channels'][channelNo][channelKey][datapointNo] = this.deviceData[serialNo]['channels'][channelNo][channelKey][datapointNo]
                         upd[serialNo]['channels'][channelNo][channelKey][datapointNo].value = value
 
-                    } 
-                   
+                    }
+
                     // we need this in BuschJaegerApPlatform.prototype.processUpdate = function(actuators)
                     upd[serialNo]['serial'] = serialNo
                     this.logger.debug("Updated Datapoint: " + serialNo + '/' + channelNo + '/' + datapointNo + '/' + value)
@@ -419,43 +412,39 @@ export class SystemAccessPoint {
     /**
      * heartbeat to detect if WS still send messages od my be death
      */
-  private async startHeartBeat() {
-    if(this.pingTimeout){
-        clearTimeout(this.pingTimeout);
+    private async startHeartBeat() {
+        if (this.pingTimeout) {
+            clearTimeout(this.pingTimeout);
+        }
+        let self = this;
+        this.logger.debug("*** heartBeat " + this.heartBeatRateMillis);
+        this.pingTimeout = setInterval(() => {
+            self.heartBeat()
+        }, this.heartBeatRateMillis);
     }
-    let self = this;
-    this.logger.debug("*** heartBeat " + this.heartBeatRateMillis);
-    // Use `WebSocket#terminate()`, which immediately destroys the connection,
-    // instead of `WebSocket#close()`, which waits for the close timer.
-    // Delay should be equal to the interval at which your server
-    // sends out pings plus a conservative assumption of the latency.
-    this.pingTimeout = setInterval(() => {
-        self.heartBeat()
-    }, this.heartBeatRateMillis);
-}
 
-/**
- * heartbeat every pingTimeoutSeconds/1000 seconds called, reconnects WS if inactive
- */
-private async heartBeat() {
-    this.logger.debug("heartBeat  " + this.heartBeatTimerMillis + "ms ... ")
-    if(this.heartBeatTimerMillis > this.heartBeatReconnectLimit) {
-        this.logger.debug("*** heartBeat recreating WS *** ")
-        this.client!.restartSocket()
-        this.resetHeartBeatTimer()
-        this.registerHandlers()
+    /**
+     * heartbeat every pingTimeoutSeconds/1000 seconds called, reconnects WS if inactive
+     */
+    private async heartBeat() {
+        this.logger.debug("heartBeat  " + this.heartBeatTimerMillis + "ms ... ")
+        if (this.heartBeatTimerMillis > this.heartBeatReconnectLimit) {
+            this.logger.debug("*** heartBeat recreating WS *** ")
+            this.client!.restartSocket()
+            this.resetHeartBeatTimer()
+            this.registerHandlers()
+        }
+        this.heartBeatTimerMillis += this.heartBeatRateMillis
     }
-    this.heartBeatTimerMillis += this.heartBeatRateMillis
-}
 
 
-/**
- * ReSets Heartbeat Timer after message received from server
- */
-private resetHeartBeatTimer() {
-    this.logger.debug("resetHeartBeatTimer")
-    this.heartBeatTimerMillis = 0
-}
+    /**
+     * ReSets Heartbeat Timer after message received from server
+     */
+    private resetHeartBeatTimer() {
+        this.logger.debug("resetHeartBeatTimer")
+        this.heartBeatTimerMillis = 0
+    }
 
 
 }

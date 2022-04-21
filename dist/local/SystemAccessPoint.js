@@ -22,15 +22,12 @@ const https = require('https');
 class SystemAccessPoint {
     constructor(configuration, subscriber, logger) {
         this.online = false;
-        this.useTLS = false;
-        this.keepAliveMessageId = 1;
-        this.heartBeatRateMillis = 2000;
+        this.heartBeatRateMillis = 1000;
         this.keepAliveTimer = null;
         this.heartBeatReconnectLimit = 30000;
         this.heartBeatTimerMillis = 0;
         this.pingTimeout = null;
         this.deviceData = {};
-        this.subscribed = false;
         this.logger = new Logger_1.ConsoleLogger();
         this._port = '';
         this._path2api = '/fhapi/v1/api';
@@ -44,6 +41,9 @@ class SystemAccessPoint {
         let cfg = this.subscriber.getConfig();
         if ('debug' in cfg && cfg['debug']) {
             this.logger.debugEnabled = true;
+        }
+        if ('reconnectLimit' in cfg && cfg['reconnectLimit'] && cfg['reconnectLimit'] > 5) {
+            this.heartBeatReconnectLimit = cfg['reconnectLimit'] * 1000;
         }
         this.axios = axios_1.default.create({
             httpsAgent: new https.Agent({
@@ -134,13 +134,10 @@ class SystemAccessPoint {
         });
         this.client.on('close', () => {
             this.logger.log('Access Point has gone offline');
-            this.online = false;
-            this.subscribed = false;
             this.subscriber.broadcastMessage({
                 'type': 'subscribed',
                 'result': false
             });
-            this.disableKeepAliveMessages();
         });
         this.client.guardedOn('message', (stanza) => __awaiter(this, void 0, void 0, function* () {
             var _a;
@@ -152,11 +149,9 @@ class SystemAccessPoint {
             }
         }));
         this.client.on('open', (address) => __awaiter(this, void 0, void 0, function* () {
-            let connectedAs = 'Local API Websocket';
-            this.logger.log("Connected as " + connectedAs);
-            this.connectedAs = connectedAs;
             this.logger.log("Retrieving configuration...");
             let deviceData = this.getDeviceConfiguration();
+            this.resetHeartBeatTimer();
         }));
         this.client.on('ping', ping => {
             this.resetHeartBeatTimer();
@@ -181,9 +176,6 @@ class SystemAccessPoint {
                 this.applyIncrementalUpdate(telegram.split('/'));
             }
         }
-    }
-    unwrapEventData(item) {
-        return "";
     }
     getProtocolHTTP() {
         let tls = this.subscriber.getConfig()['useTLS'];
@@ -241,13 +233,6 @@ class SystemAccessPoint {
             this.logger.log("Disconnecting from the System Access Point...");
             yield this.client.stop();
         });
-    }
-    sendKeepAliveMessage() {
-        return __awaiter(this, void 0, void 0, function* () {
-        });
-    }
-    sendKeepAliveMessages() {
-        this.keepAliveTimer = setInterval(() => this.sendKeepAliveMessage(), 15000);
     }
     disableKeepAliveMessages() {
         if (this.keepAliveTimer !== null) {

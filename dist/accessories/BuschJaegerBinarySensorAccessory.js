@@ -1,5 +1,5 @@
 "use strict";
-var util = require("util");
+const util = require("util");
 var BuschJaegerAccessory = require('./BuschJaegerAccessory.js').BuschJaegerAccessory;
 function BuschJaegerBinarySensorAccessory(platform, Service, Characteristic, actuator, channel = null, mapping = null) {
     BuschJaegerBinarySensorAccessory.super_.apply(this, arguments);

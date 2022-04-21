@@ -60,6 +60,14 @@
                     }
                 ]
             },
+            "reconnectLimit": {
+                "title": "Auto Reconnect SysAP",
+                "type": "integer",
+                "default": 30,
+                "minimum":2,
+                "maximum":600,
+                "description": "Reconnect the SysAP after N-seconds of inactivity (connection lost, no mesages incoming)"
+            },
             "dimmActorMinValue": {
                 "title": "DimmActor Minimum Brightness",
                 "type": "integer",

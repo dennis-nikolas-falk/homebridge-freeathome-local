@@ -5,7 +5,7 @@
 [sstadlberger]: https://github.com/sstadlberger
 [Home Hub]: https://support.apple.com/en-us/HT207057
 
-# homebridge-freeathome
+# homebridge-freeathome-local
 
 Homebridge platform plugin for free@home SmartHome devices.
 
@@ -18,13 +18,17 @@ Homebridge platform plugin for free@home SmartHome devices.
 
 ![HomeKit UI](images/example_homekit_ui.png)
 
+**IMPORTANT:** From v3.0.4 the Cloud API will not be supportet anymore! The cloud based code will be removed in a future release.
+
 **IMPORTANT:** If you upgrade from `< 2.0.0` please read the [Upgrade Notes](CHANGELOG.md) carefully before installing this plugin.
 
 # Features
-* Control your Busch-Jaeger Lights, Outlets, Blinds and more with Apple devices with Homekit
+* Running on a local REST API
+* Control your Busch-Jäger Lights, Outlets, Blinds and more with Apple devices with Homekit
 * Setup automations with the HomeKit UI
 * Ask Siri to control your devices
-* Experimental Feature: Use Local REST API
+* Automatic reconnect to the SysAP
+
 
 # Supported accessories
 - Binary Sensors
@@ -129,7 +133,6 @@ To manage your accessories remotely you need to setup an iPad/Homepod or Apple T
 # Tips & Tricks
 * Do not restart Homebridge if you are either updating the SysAp or an actuator as the accessory may be removed from
 HomeKit if it is not detected during discovery.
-* If the HomeKit UI does not respond to manual changes (switch pressed) or the accessory doesn't update itself log into the System Access Point interface and log out again. The SysAp might disable websocket notifications if the connection is idle for too long.
 
 # Changelog
 The changelog can be viewed [here](CHANGELOG.md).

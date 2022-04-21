@@ -1,6 +1,6 @@
 
 
-var util = require("util");
+const util = require("util");
 
 var BuschJaegerAccessory = require('./BuschJaegerAccessory.js').BuschJaegerAccessory;
 

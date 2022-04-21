@@ -1,3 +1,8 @@
+### 3.0.4
+
+* Reconnect Limit setting in config (default 30s)
+* Cleanup unused code
+
 ### 3.0.4-beta.2
 
 * Destroy existing Socket before Reconnect 
