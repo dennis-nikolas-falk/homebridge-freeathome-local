@@ -429,7 +429,7 @@ export class SystemAccessPoint {
     private async heartBeat() {
         this.logger.debug("heartBeat  " + this.heartBeatTimerMillis + "ms ... ")
         if (this.heartBeatTimerMillis > this.heartBeatReconnectLimit) {
-            this.logger.debug("*** heartBeat recreating WS *** ")
+            this.logger.error("*** heartBeat Restarting Socket *** (" + this.heartBeatReconnectLimit + ")")
             this.client!.restartSocket()
             this.resetHeartBeatTimer()
             this.registerHandlers()
