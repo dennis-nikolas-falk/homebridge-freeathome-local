@@ -186,6 +186,8 @@ BuschJaegerApPlatform.prototype.getAccessoryClass = function (deviceId, channel,
             return ['BuschJaegerMediaPlayerAccessory', null];
         case '7d':
             return ['BuschJaegerSmokeSensorAccessory', null];
+        case '3e':
+            return ['BuschJaegerWirelessThermostatAccessory', null];
 
         default:
             return [null, null];
