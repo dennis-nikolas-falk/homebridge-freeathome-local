@@ -1,3 +1,12 @@
+### 3.0.5-beta.1
+
+* added support for "Window Sensor Accessory 6222/1 AP-64-WL"
+* fix for "Window Contact Sensor Sensor/Schaltaktor 8/8-fach 6251/8.8":
+ they not have the window status on the datapoint odp0000 but on the datapoint odp000c. Now the pairingID 53 is searched and the corresponding datapoint is assigned.
+* added wireless thermostat accessory "Heizkörperthermostat Basic 6256/1-WL"
+
+many thanks to Dennis Nikolas Falk https://github.com/dennis-nikolas-falk for this great contribiution!
+
 ### 3.0.4
 
 * Reconnect Limit setting in config (default 30s)
