@@ -18,7 +18,7 @@ Homebridge platform plugin for free@home SmartHome devices.
 
 ![HomeKit UI](images/example_homekit_ui.png)
 
-**IMPORTANT:** From v3.0.4 the Cloud API will not be supportet anymore! The cloud based code will be removed in a future release.
+**IMPORTANT:** From v3.0.6 the Cloud API will not be supportet anymore! The cloud based code will be removed in a future release.
 
 **IMPORTANT:** If you upgrade from `< 2.0.0` please read the [Upgrade Notes](CHANGELOG.md) carefully before installing this plugin.
 
@@ -146,9 +146,6 @@ If you have any questions or help please open an issue on the GitHub project pag
 # Contributing
 Pull requests are always welcome. If you have a device that is not supported yet please open an issue or open a pull request with
 your modifications.
-
-# Donation
-If you find my work useful you can support the ongoing development of this project by buying me a [cup of coffee](https://www.paypal.me/Hspanka)
 
 # License
 The project is subject to the MIT license unless otherwise noted. A copy can be found in the root directory of the project [LICENSE](LICENSE).

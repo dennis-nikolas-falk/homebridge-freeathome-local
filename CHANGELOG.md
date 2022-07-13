@@ -1,11 +1,25 @@
-### 3.0.5-beta.1
+### 3.0.5
 
+##### Features
 * added support for "Window Sensor Accessory 6222/1 AP-64-WL"
-* fix for "Window Contact Sensor Sensor/Schaltaktor 8/8-fach 6251/8.8":
- they not have the window status on the datapoint odp0000 but on the datapoint odp000c. Now the pairingID 53 is searched and the corresponding datapoint is assigned.
 * added wireless thermostat accessory "Heizkörperthermostat Basic 6256/1-WL"
 
-many thanks to Dennis Nikolas Falk https://github.com/dennis-nikolas-falk for this great contribiution!
+Many thanks to Dennis Nikolas Falk https://github.com/dennis-nikolas-falk for this great contribiution!
+
+##### Bug Fixes
+* fix for "Window Contact Sensor Sensor/Schaltaktor 8/8-fach 6251/8.8":
+ they not have the window status on the datapoint odp0000 but on the datapoint odp000c. Now the pairingID 53 is searched and the corresponding datapoint is assigned.
+
+##### Bump Dependencies
+* axios         ^0.26.1  →  ^0.27.2     
+* express       ^4.17.3  →  ^4.18.1     
+* ip             ^1.1.5  →   ^1.1.8     
+* npm            ^8.7.0  →  ^8.13.2     
+* ws             ^8.5.0  →   ^8.8.0     
+* @types/node  ^17.0.25  →  ^18.0.0     
+* @types/pako    ^1.0.3  →   ^2.0.0     
+* typescript     ^4.6.3  →   ^4.7.4 
+
 
 ### 3.0.4
 

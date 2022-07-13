@@ -1,151 +1,119 @@
 "use strict";
-
 var util = require("util");
-
 var BuschJaegerAccessory = require('./BuschJaegerAccessory.js').BuschJaegerAccessory;
-
-
 function BuschJaegerWirelessThermostatAccessory(platform, Service, Characteristic, actuator, channel = null, mapping = null) {
     BuschJaegerWirelessThermostatAccessory.super_.apply(this, arguments);
-
     this.channel = '0000';
-
     var thermostatService = new Service.Thermostat();
-
     thermostatService.getCharacteristic(Characteristic.CurrentHeatingCoolingState)
         .on('get', this.getCurrentHeatingCoolingState.bind(this));
-
     thermostatService.getCharacteristic(Characteristic.TargetHeatingCoolingState)
         .setProps({
-            validValues: [0, 3]
-        })
+        validValues: [0, 3]
+    })
         .on('get', this.getTargetHeatingCoolingState.bind(this))
         .on('set', this.setTargetHeatingCoolingState.bind(this));
-
     thermostatService.getCharacteristic(Characteristic.CurrentTemperature)
         .on('get', this.getCurrentTemperature.bind(this));
-
     thermostatService.getCharacteristic(Characteristic.TargetTemperature)
         .setProps({
-            maxValue: 35,
-            minValue: 7,
-            minStep: 0.5
-        })
+        maxValue: 35,
+        minValue: 7,
+        minStep: 0.5
+    })
         .on('get', this.getTargetTemperature.bind(this))
         .on('set', this.setTargetTemperature.bind(this));
-
     thermostatService.getCharacteristic(Characteristic.TemperatureDisplayUnits)
         .setProps({
-            validValues: [0]
-        })
+        validValues: [0]
+    })
         .on('get', this.getTemperatureDisplayUnits.bind(this));
-
-    /*
-     * If we set TargetHeatingCoolingState to OFF the accessory will set the
-     * target heating temperature to 35°C or 7°C. We will store the last target temperature
-     * in this variable do prevent incorrect readouts. The real target temperature
-     * is re-set correctly when the TargetHeatingCoolingState is set back to AUTO.
-     */
     this.lastTargetTemperature = 0;
-
     this.services.thermostat = thermostatService;
 }
-
 BuschJaegerWirelessThermostatAccessory.prototype = {
-    getCurrentHeatingCoolingState: function(callback) {
+    getCurrentHeatingCoolingState: function (callback) {
         if (callback) {
             let mode = this.Characteristic.CurrentHeatingCoolingState.HEAT;
-
             let valveOpen = parseInt(this.getValue(this.channel, 'odp0008'));
-
             if (valveOpen == 0) {
                 mode = this.Characteristic.CurrentHeatingCoolingState.OFF;
             }
-
             callback(null, mode);
         }
     },
-    getTargetHeatingCoolingState: function(callback) {
+    getTargetHeatingCoolingState: function (callback) {
         if (callback) {
             let mode = this.Characteristic.TargetHeatingCoolingState.OFF;
             if (this.getValue(this.channel, 'odp0002') == '1') {
-                mode = this.Characteristic.TargetHeatingCoolingState.AUTO
+                mode = this.Characteristic.TargetHeatingCoolingState.AUTO;
             }
             callback(null, mode);
         }
     },
-    setTargetHeatingCoolingState: function(value, callback) {
+    setTargetHeatingCoolingState: function (value, callback) {
         if (value == this.Characteristic.TargetHeatingCoolingState.OFF) {
             this.setValue(this.channel, 'idp0005', '0');
-        } else {
+        }
+        else {
             this.setValue(this.channel, 'idp0005', '1');
         }
-
         this.waitForUpdate(callback, this.channel, 'odp0002');
     },
-    getCurrentTemperature: function(callback) {
+    getCurrentTemperature: function (callback) {
         if (callback) {
             let temperature = this.roundHalf(this.getValue(this.channel, 'odp0007'));
             callback(null, temperature);
         }
     },
-    getTargetTemperature: function(callback) {
-        this.getTargetHeatingCoolingState(function(joker, targetHeatingCoolingState) {
+    getTargetTemperature: function (callback) {
+        this.getTargetHeatingCoolingState(function (joker, targetHeatingCoolingState) {
             let targetTemperature = this.roundHalf(this.getValue(this.channel, 'odp0000'));
-
-            // See param this.lastTargetTemperature for more information
             if (targetHeatingCoolingState != this.Characteristic.TargetHeatingCoolingState.OFF
-              || (targetTemperature != 7 && targetTemperature != 35) || this.lastTargetTemperature == 0) {
+                || (targetTemperature != 7 && targetTemperature != 35) || this.lastTargetTemperature == 0) {
                 this.lastTargetTemperature = targetTemperature;
             }
-
             if (callback) {
                 callback(null, this.lastTargetTemperature);
             }
         }.bind(this));
     },
-    setTargetTemperature: function(value, callback) {
-        this.getTargetHeatingCoolingState(function(joker, targetHeatingCoolingState) {
-            // We first need to enable the Thermostat before we can set a new Temperature.
+    setTargetTemperature: function (value, callback) {
+        this.getTargetHeatingCoolingState(function (joker, targetHeatingCoolingState) {
             if (targetHeatingCoolingState == this.Characteristic.TargetHeatingCoolingState.OFF) {
-                this.setTargetHeatingCoolingState(this.Characteristic.TargetHeatingCoolingState.AUTO, function() {
+                this.setTargetHeatingCoolingState(this.Characteristic.TargetHeatingCoolingState.AUTO, function () {
                     this.setTargetTemperature(value, callback);
                 }.bind(this));
-            } else {
+            }
+            else {
                 this.setValue(this.channel, 'idp0009', value);
-
                 this.waitForUpdate(callback, this.channel, 'odp0000');
             }
         }.bind(this));
     },
-    getTemperatureDisplayUnits: function(callback) {
+    getTemperatureDisplayUnits: function (callback) {
         if (callback) {
             callback(null, this.Characteristic.TemperatureDisplayUnits.CELSIUS);
         }
     },
-
-    updateCharacteristics: function() {
+    updateCharacteristics: function () {
         var that = this;
-
-        this.getCurrentHeatingCoolingState(function(joker, value) {
+        this.getCurrentHeatingCoolingState(function (joker, value) {
             that.services.thermostat.getCharacteristic(that.Characteristic.CurrentHeatingCoolingState).updateValue(value);
         });
-        this.getTargetHeatingCoolingState(function(joker, value) {
+        this.getTargetHeatingCoolingState(function (joker, value) {
             that.services.thermostat.getCharacteristic(that.Characteristic.TargetHeatingCoolingState).updateValue(value);
-            that.getTargetTemperature(function(joker, value) {
+            that.getTargetTemperature(function (joker, value) {
                 that.services.thermostat.getCharacteristic(that.Characteristic.TargetTemperature).updateValue(value);
             });
         });
-        this.getCurrentTemperature(function(joker, value) {
+        this.getCurrentTemperature(function (joker, value) {
             that.services.thermostat.getCharacteristic(that.Characteristic.CurrentTemperature).updateValue(value);
         });
     },
-
-    roundHalf: function(value) {
+    roundHalf: function (value) {
         return (Math.round(value * 2) / 2).toFixed(1);
     }
-}
-
+};
 util.inherits(BuschJaegerWirelessThermostatAccessory, BuschJaegerAccessory);
-
 module.exports = BuschJaegerWirelessThermostatAccessory;

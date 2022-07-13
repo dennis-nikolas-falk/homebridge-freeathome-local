@@ -24,7 +24,7 @@ class SystemAccessPoint {
         this.online = false;
         this.heartBeatRateMillis = 1000;
         this.keepAliveTimer = null;
-        this.heartBeatReconnectLimit = 30000;
+        this.heartBeatReconnectLimit = 10000;
         this.heartBeatTimerMillis = 0;
         this.pingTimeout = null;
         this.deviceData = {};

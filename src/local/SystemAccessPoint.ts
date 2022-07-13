@@ -18,7 +18,7 @@ export class SystemAccessPoint {
     private settings: SystemAccessPointSettings | undefined
     private heartBeatRateMillis: number = 1000
     private keepAliveTimer: NodeJS.Timeout | null = null
-    private heartBeatReconnectLimit: number = 30000 // 30s
+    private heartBeatReconnectLimit: number = 10000 // 10s
     private heartBeatTimerMillis: number = 0
     private pingTimeout: NodeJS.Timeout | null = null
 

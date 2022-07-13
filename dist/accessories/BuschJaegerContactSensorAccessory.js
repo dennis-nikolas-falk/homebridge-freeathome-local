@@ -9,12 +9,11 @@ class BuschJaegerContactSensorAccessory extends BuschJaegerAccessory {
         this.services.contact = contactService;
     }
     getContactSensorState(callback) {
-        //find the correct contact sensor output datapoint
-        let outputDatapoints = this.platform.actuatorInfo[this.serial]['channels']['ch' + this.channel]['outputs']
-        let contactSensorODP = 'odp0000'
-        for (const outputDatapoint in outputDatapoints){
-            if(outputDatapoints[outputDatapoint]['pairingID'] === 53){
-                contactSensorODP = outputDatapoint.toString()
+        let outputDatapoints = this.platform.actuatorInfo[this.serial]['channels']['ch' + this.channel]['outputs'];
+        let contactSensorODP = 'odp0000';
+        for (const outputDatapoint in outputDatapoints) {
+            if (outputDatapoints[outputDatapoint]['pairingID'] === 53) {
+                contactSensorODP = outputDatapoint.toString();
                 break;
             }
         }
